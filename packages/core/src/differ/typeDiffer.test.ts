@@ -304,25 +304,31 @@ describe('TypeDiffer', () => {
       const result = differ.compare(type1, type2);
 
       expect(result.hasChanges).toBe(true);
-      expect(result.diffs[0].kind).toBe(DiffKind.TypeMismatch);
+      // New behavior: detects specific missing type, not just length mismatch
+      expect(result.diffs[0].kind).toBe(DiffKind.Missing);
+      expect(result.diffs[0].expected).toBe('c');
     });
 
     it('should detect intersection length mismatch', () => {
       const type1: TypeNode = {
         kind: 'intersection',
         children: [
-          { kind: 'object', children: [] },
-          { kind: 'object', children: [] },
+          { kind: 'primitive', name: 'A' },
+          { kind: 'primitive', name: 'B' },
         ],
       };
       const type2: TypeNode = {
         kind: 'intersection',
-        children: [{ kind: 'object', children: [] }],
+        children: [{ kind: 'primitive', name: 'A' }],
       };
 
       const result = differ.compare(type1, type2);
 
+      // New behavior: detects specific missing type
       expect(result.hasChanges).toBe(true);
+      expect(result.diffs.length).toBe(1);
+      expect(result.diffs[0].kind).toBe(DiffKind.Missing);
+      expect(result.diffs[0].expected).toBe('B');
     });
   });
 
@@ -437,6 +443,142 @@ describe('TypeDiffer', () => {
       expect(result.summary.missing).toBe(2); // name, age
       expect(result.summary.extra).toBe(1); // email
       expect(result.summary.mismatch).toBe(0);
+    });
+  });
+
+  describe('smart union/intersection comparison', () => {
+    it('should detect missing type in union', () => {
+      const type1: TypeNode = {
+        kind: 'union',
+        children: [
+          { kind: 'literal', value: 'a' },
+          { kind: 'literal', value: 'b' },
+          { kind: 'literal', value: 'c' },
+        ],
+      };
+      const type2: TypeNode = {
+        kind: 'union',
+        children: [
+          { kind: 'literal', value: 'a' },
+          { kind: 'literal', value: 'b' },
+        ],
+      };
+
+      const result = differ.compare(type1, type2);
+
+      expect(result.hasChanges).toBe(true);
+      expect(result.diffs.length).toBe(1);
+      expect(result.diffs[0].kind).toBe(DiffKind.Missing);
+      expect(result.diffs[0].expected).toBe('c');
+    });
+
+    it('should detect extra type in union', () => {
+      const type1: TypeNode = {
+        kind: 'union',
+        children: [
+          { kind: 'literal', value: 'a' },
+          { kind: 'literal', value: 'b' },
+        ],
+      };
+      const type2: TypeNode = {
+        kind: 'union',
+        children: [
+          { kind: 'literal', value: 'a' },
+          { kind: 'literal', value: 'b' },
+          { kind: 'literal', value: 'c' },
+        ],
+      };
+
+      const result = differ.compare(type1, type2);
+
+      expect(result.hasChanges).toBe(true);
+      expect(result.diffs.length).toBe(1);
+      expect(result.diffs[0].kind).toBe(DiffKind.Extra);
+      expect(result.diffs[0].actual).toBe('c');
+    });
+
+    it('should detect both missing and extra types', () => {
+      const type1: TypeNode = {
+        kind: 'union',
+        children: [
+          { kind: 'literal', value: 'a' },
+          { kind: 'literal', value: 'b' },
+          { kind: 'literal', value: 'c' },
+        ],
+      };
+      const type2: TypeNode = {
+        kind: 'union',
+        children: [
+          { kind: 'literal', value: 'a' },
+          { kind: 'literal', value: 'd' },
+          { kind: 'literal', value: 'e' },
+        ],
+      };
+
+      const result = differ.compare(type1, type2);
+
+      expect(result.hasChanges).toBe(true);
+      expect(result.diffs.length).toBe(4); // missing: b, c; extra: d, e
+      const missing = result.diffs.filter(d => d.kind === DiffKind.Missing);
+      const extra = result.diffs.filter(d => d.kind === DiffKind.Extra);
+      expect(missing.length).toBe(2);
+      expect(extra.length).toBe(2);
+    });
+
+    it('should handle intersection types', () => {
+      const type1: TypeNode = {
+        kind: 'intersection',
+        children: [
+          { kind: 'primitive', name: 'A' },
+          { kind: 'primitive', name: 'B' },
+        ],
+      };
+      const type2: TypeNode = {
+        kind: 'intersection',
+        children: [
+          { kind: 'primitive', name: 'A' },
+          { kind: 'primitive', name: 'C' },
+        ],
+      };
+
+      const result = differ.compare(type1, type2);
+
+      expect(result.hasChanges).toBe(true);
+      expect(result.diffs.length).toBe(2); // missing: B, extra: C
+    });
+  });
+
+  describe('utility methods', () => {
+    it('should format path correctly', () => {
+      expect(differ.formatPath([])).toBe('root');
+      expect(differ.formatPath(['user'])).toBe('user');
+      expect(differ.formatPath(['user', 'profile', 'email'])).toBe('user.profile.email');
+    });
+
+    it('should filter diffs by kind', () => {
+      const type1: TypeNode = {
+        kind: 'object',
+        children: [
+          { kind: 'primitive', name: 'id' },
+          { kind: 'primitive', name: 'name' },
+        ],
+      };
+      const type2: TypeNode = {
+        kind: 'object',
+        children: [
+          { kind: 'primitive', name: 'id' },
+          { kind: 'primitive', name: 'email' },
+        ],
+      };
+
+      const result = differ.compare(type1, type2);
+      const missing = differ.filterDiffs(result, DiffKind.Missing);
+      const extra = differ.filterDiffs(result, DiffKind.Extra);
+
+      expect(missing.length).toBe(1);
+      expect(extra.length).toBe(1);
+      expect(missing[0].path).toEqual(['name']);
+      expect(extra[0].path).toEqual(['email']);
     });
   });
 });

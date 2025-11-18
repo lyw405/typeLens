@@ -186,6 +186,7 @@ export class TypeDiffer {
 
   /**
    * Compare union/intersection type nodes
+   * Uses smart matching to find best correspondence between types
    */
   private compareComposites(
     expected: TypeNode,
@@ -193,19 +194,37 @@ export class TypeDiffer {
     path: string[],
     diffs: TypeDiff[]
   ): void {
-    // For unions/intersections, we do a simple length check
-    // More sophisticated comparison could match constituent types
     const expectedChildren = expected.children || [];
     const actualChildren = actual.children || [];
 
-    if (expectedChildren.length !== actualChildren.length) {
-      diffs.push({
-        path,
-        kind: DiffKind.TypeMismatch,
-        expected: `${expected.kind} with ${expectedChildren.length} types`,
-        actual: `${actual.kind} with ${actualChildren.length} types`,
-        message: `${expected.kind} length mismatch`,
-      });
+    // Build sets for efficient lookup
+    const expectedSet = new Set(expectedChildren.map(c => this.nodeToString(c)));
+    const actualSet = new Set(actualChildren.map(c => this.nodeToString(c)));
+
+    // Find missing types (in expected but not in actual)
+    for (const expectedChild of expectedChildren) {
+      const expectedStr = this.nodeToString(expectedChild);
+      if (!actualSet.has(expectedStr)) {
+        diffs.push({
+          path: [...path, expectedStr],
+          kind: DiffKind.Missing,
+          expected: expectedStr,
+          message: `Missing type in ${expected.kind}: ${expectedStr}`,
+        });
+      }
+    }
+
+    // Find extra types (in actual but not in expected)
+    for (const actualChild of actualChildren) {
+      const actualStr = this.nodeToString(actualChild);
+      if (!expectedSet.has(actualStr)) {
+        diffs.push({
+          path: [...path, actualStr],
+          kind: DiffKind.Extra,
+          actual: actualStr,
+          message: `Extra type in ${expected.kind}: ${actualStr}`,
+        });
+      }
     }
   }
 
@@ -216,5 +235,20 @@ export class TypeDiffer {
     if (node.name) return node.name;
     if (node.value !== undefined) return String(node.value);
     return node.kind;
+  }
+
+  /**
+   * Format diff path for display
+   */
+  formatPath(path: string[]): string {
+    if (path.length === 0) return 'root';
+    return path.join('.');
+  }
+
+  /**
+   * Get all diffs of a specific kind
+   */
+  filterDiffs(result: DiffResult, kind: DiffKind): TypeDiff[] {
+    return result.diffs.filter(d => d.kind === kind);
   }
 }

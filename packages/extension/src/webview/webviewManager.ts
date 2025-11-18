@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { SerializedType } from '@typelens/shared';
+import { SerializedType, DiffResult } from '@typelens/shared';
 
 /**
  * Manages webview panels for TypeLens
@@ -35,7 +35,7 @@ export class WebviewManager {
 
     // Handle messages from webview
     panel.webview.onDidReceiveMessage(
-      async (message) => {
+      async message => {
         // Send type data once webview is ready
         if (message.type === 'ready') {
           panel.webview.postMessage({
@@ -60,12 +60,73 @@ export class WebviewManager {
   }
 
   /**
-   * Handle messages from webview
+   * Create or show diff panel
    */
-  private async handleWebviewMessage(
-    message: any,
-    panel: vscode.WebviewPanel
-  ): Promise<void> {
+  showDiff(
+    expected: SerializedType,
+    actual: SerializedType,
+    diffResult: DiffResult
+  ): vscode.WebviewPanel {
+    const panelId = `diff_${Date.now()}`;
+
+    // Create new panel
+    const panel = vscode.window.createWebviewPanel(
+      'typelensDiff',
+      `TypeLens Diff: ${expected.displayName} vs ${actual.displayName}`,
+      vscode.ViewColumn.Beside,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.file(path.join(this.context.extensionPath, '..', 'webview', 'dist')),
+        ],
+      }
+    );
+
+    // Set HTML content
+    panel.webview.html = this.getWebviewHtml(panel.webview);
+
+    // Handle messages from webview
+    panel.webview.onDidReceiveMessage(
+      async message => {
+        // Send diff data once webview is ready
+        if (message.type === 'ready') {
+          // Convert DiffResult to TypeDiff format for webview
+          const typeDiff = {
+            changes: diffResult.diffs.map(d => ({
+              path: d.path.join('.'),
+              kind: d.kind,
+              message: d.message,
+              expected: d.expected,
+              actual: d.actual,
+            })),
+          };
+
+          panel.webview.postMessage({
+            type: 'showDiff',
+            data: {
+              expected,
+              actual,
+              diff: typeDiff,
+            },
+          });
+        }
+        // Handle other messages
+        await this.handleWebviewMessage(message, panel);
+      },
+      undefined,
+      this.context.subscriptions
+    );
+
+    // Clean up when panel is closed
+    panel.onDidDispose(() => {
+      this.panels.delete(panelId);
+    });
+
+    this.panels.set(panelId, panel);
+    return panel;
+  }
+  private async handleWebviewMessage(message: any, panel: vscode.WebviewPanel): Promise<void> {
     switch (message.type) {
       case 'ready':
         // Webview is ready to receive data
@@ -132,7 +193,7 @@ export class WebviewManager {
    * Dispose all panels
    */
   dispose(): void {
-    this.panels.forEach((panel) => panel.dispose());
+    this.panels.forEach(panel => panel.dispose());
     this.panels.clear();
   }
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { SerializedType, TypeDiff as TypeDiffData, DiffKind } from '@typelens/shared';
 import { TypeTree } from './TypeTree';
 import './TypeDiff.css';
@@ -86,10 +86,11 @@ const DiffSummary: React.FC<{ diff: TypeDiffData }> = ({ diff }) => {
 };
 
 /**
- * Render diff changes list
+ * Render diff changes list with navigation
  */
 const DiffChangesList: React.FC<{ diff: TypeDiffData }> = ({ diff }) => {
   const changes = diff.changes || [];
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   if (changes.length === 0) {
     return (
@@ -101,16 +102,53 @@ const DiffChangesList: React.FC<{ diff: TypeDiffData }> = ({ diff }) => {
     );
   }
 
+  const goToPrevious = () => {
+    setCurrentIndex(prev => (prev > 0 ? prev - 1 : changes.length - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex(prev => (prev < changes.length - 1 ? prev + 1 : 0));
+  };
+
   return (
     <div className="diff-changes-list">
-      <h3>Changes</h3>
+      <div className="diff-changes-header">
+        <h3>Changes ({changes.length})</h3>
+        <div className="diff-navigation">
+          <button onClick={goToPrevious} title="Previous change (↑)">
+            ↑
+          </button>
+          <span className="diff-counter">
+            {currentIndex + 1} / {changes.length}
+          </span>
+          <button onClick={goToNext} title="Next change (↓)">
+            ↓
+          </button>
+        </div>
+      </div>
       {changes.map((change, index) => (
-        <div key={index} className="diff-change-item">
+        <div
+          key={index}
+          className={`diff-change-item ${index === currentIndex ? 'diff-change-active' : ''}`}
+          onClick={() => setCurrentIndex(index)}
+        >
           <span className="diff-icon" style={{ color: getDiffColor(change.kind) }}>
             {getDiffIcon(change.kind)}
           </span>
           <span className="diff-path">{change.path}</span>
           <span className="diff-message">{change.message}</span>
+          {change.expected && (
+            <div className="diff-detail">
+              <span className="diff-label">Expected:</span>
+              <code>{change.expected}</code>
+            </div>
+          )}
+          {change.actual && (
+            <div className="diff-detail">
+              <span className="diff-label">Actual:</span>
+              <code>{change.actual}</code>
+            </div>
+          )}
         </div>
       ))}
     </div>

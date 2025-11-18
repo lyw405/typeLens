@@ -81,24 +81,74 @@
   border: 1px solid var(--vscode-panel-border);
 }
 
+.diff-changes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .diff-changes-list h3 {
-  margin: 0 0 12px 0;
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
 }
 
+.diff-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-navigation button {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.1s;
+}
+
+.diff-navigation button:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.diff-counter {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  min-width: 60px;
+  text-align: center;
+}
+
 .diff-change-item {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 6px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
   margin-bottom: 4px;
   border-radius: 3px;
   font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.1s;
 }
 
 .diff-change-item:hover {
   background-color: var(--vscode-list-hoverBackground);
+  border-color: var(--vscode-focusBorder);
+}
+
+.diff-change-active {
+  background-color: var(--vscode-list-activeSelectionBackground);
+  border-color: var(--vscode-focusBorder);
+}
+
+.diff-change-item > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .diff-path {
@@ -116,4 +166,26 @@
   padding: 24px;
   text-align: center;
   font-size: 14px;
+}
+
+.diff-detail {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-left: 24px;
+  font-size: 12px;
+}
+
+.diff-label {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  min-width: 70px;
+}
+
+.diff-detail code {
+  font-family: var(--vscode-editor-font-family);
+  background-color: var(--vscode-textCodeBlock-background);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--vscode-textPreformat-foreground);
 }
