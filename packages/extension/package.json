@@ -1,0 +1,88 @@
+{
+  "name": "typelens",
+  "displayName": "TypeLens",
+  "description": "Debug TypeScript types like you debug code",
+  "version": "0.0.1",
+  "publisher": "typelens",
+  "author": "TypeLens Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lyw405/typeLens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lyw405/typeLens/issues"
+  },
+  "homepage": "https://github.com/lyw405/typeLens#readme",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Debuggers",
+    "Other"
+  ],
+  "keywords": [
+    "typescript",
+    "type",
+    "debug",
+    "inspector",
+    "diff"
+  ],
+  "activationEvents": [
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "typelens.inspectType",
+        "title": "Inspect Type with TypeLens"
+      },
+      {
+        "command": "typelens.compareTypes",
+        "title": "Compare Types in TypeLens"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorLangId == typescript || editorLangId == typescriptreact",
+          "command": "typelens.inspectType",
+          "group": "typelens"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "typelens.inspectType",
+        "key": "ctrl+shift+t",
+        "mac": "cmd+shift+t",
+        "when": "editorTextFocus && (editorLangId == typescript || editorLangId == typescriptreact)"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node",
+    "dev": "pnpm build --watch",
+    "clean": "rm -rf out",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'No tests yet'",
+    "lint": "echo 'Linting...'",
+    "package": "vsce package --no-dependencies",
+    "vscode:prepublish": "pnpm build --minify"
+  },
+  "dependencies": {
+    "@typelens/core": "workspace:*",
+    "@typelens/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.19.0",
+    "typescript": "^5.3.3"
+  }
+}
