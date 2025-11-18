@@ -44,6 +44,10 @@
       {
         "command": "typelens.compareTypes",
         "title": "Compare Types in TypeLens"
+      },
+      {
+        "command": "typelens.compareFromError",
+        "title": "Compare Types from Error"
       }
     ],
     "menus": {

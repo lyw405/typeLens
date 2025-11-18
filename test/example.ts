@@ -13,7 +13,7 @@ interface User {
   name: string;
   email: string;
   age: number;
-  isActive: boolean;
+  isActive?: boolean;
 }
 
 // Complex nested type
@@ -31,9 +31,7 @@ interface UserProfile {
 }
 
 // Generic type
-type Result<T, E = Error> = 
-  | { success: true; data: T }
-  | { success: false; error: E };
+type Result<T, E = Error> = { success: true; data: T } | { success: false; error: E };
 
 // Union type
 type Status = 'pending' | 'active' | 'suspended' | 'deleted';
@@ -85,9 +83,45 @@ function processUser(user: User): UserWithTimestamps {
 
 /**
  * Instructions:
- * 
+ *
  * 1. Place cursor on any type/interface name (e.g., User, UserProfile)
  * 2. Right-click and select "Inspect Type with TypeLens"
  * 3. Or use keyboard shortcut: Cmd+Shift+T (Mac) / Ctrl+Shift+T (Windows)
  * 4. Look for Code Lens "🔍 Inspect" above type definitions
+ * 5. For type errors, click the 💡 lightbulb and select "Compare Types in TypeLens"
  */
+
+// ============================================
+// Test Error Code Actions
+// ============================================
+
+// Type mismatch error (TS2322)
+const wrongUser: User = {
+  id: '123',
+  name: 'John Doe',
+  email: 'john@example.com',
+  age: '30', // Should be number, not string - Click 💡 to compare types!
+  isActive: true,
+};
+
+// Missing property error (TS2741)
+const incompleteUser: User = {
+  id: '456',
+  name: 'Jane Doe',
+  // Missing email, age, and isActive - Click 💡 to see the difference!
+};
+
+// Argument type error (TS2345)
+function greetUser(user: User): string {
+  return `Hello, ${user.name}!`;
+}
+
+greetUser({ id: '789', name: 'Bob' }); // Missing properties - Click 💡!
+
+// Return type error
+function getUserAge(user: User): number {
+  return user.age.toString(); // Wrong return type - Click 💡!
+}
+
+// Union type mismatch
+const invalidStatus: Status = 'unknown'; // Invalid value - Click 💡!

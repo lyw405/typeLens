@@ -154,9 +154,6 @@ export const TypeTree: React.FC<TypeTreeProps> = ({
         </span>
         {node.optional && <span className="type-optional">?</span>}
         {node.readonly && <span className="type-readonly">readonly</span>}
-        {node.value !== undefined && node.kind === 'literal' && (
-          <span className="type-value"> = {JSON.stringify(node.value)}</span>
-        )}
         {filePath && position && (
           <button
             className="jump-to-definition"

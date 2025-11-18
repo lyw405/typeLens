@@ -6,8 +6,7 @@
       "type": "extensionHost",
       "request": "launch",
       "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/extension"],
-      "outFiles": ["${workspaceFolder}/packages/extension/out/**/*.js"],
-      "preLaunchTask": "${defaultBuildTask}"
+      "outFiles": ["${workspaceFolder}/packages/extension/out/**/*.js"]
     },
     {
       "name": "Extension Tests",

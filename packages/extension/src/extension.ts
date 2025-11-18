@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { InspectTypeCommand } from './commands/inspectType';
 import { CompareTypesCommand } from './commands/compareTypes';
 import { TypeLensCodeLensProvider } from './providers/codeLensProvider';
+import { TypeLensErrorCodeActionProvider } from './providers/errorCodeActionProvider';
 import { TypeScriptServiceProvider } from './services/tsServiceProvider';
 import { WebviewManager } from './webview/webviewManager';
 
@@ -18,7 +19,10 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('typelens.inspectType', () => inspectTypeCommand.execute()),
-    vscode.commands.registerCommand('typelens.compareTypes', () => compareTypesCommand.execute())
+    vscode.commands.registerCommand('typelens.compareTypes', () => compareTypesCommand.execute()),
+    vscode.commands.registerCommand('typelens.compareFromError', (diagnostic: vscode.Diagnostic) =>
+      compareTypesCommand.compareFromError(diagnostic)
+    )
   );
 
   // Register Code Lens provider
@@ -30,6 +34,21 @@ export function activate(context: vscode.ExtensionContext) {
         { language: 'typescriptreact', scheme: 'file' },
       ],
       codeLensProvider
+    )
+  );
+
+  // Register Error Code Action provider
+  const errorCodeActionProvider = new TypeLensErrorCodeActionProvider();
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      [
+        { language: 'typescript', scheme: 'file' },
+        { language: 'typescriptreact', scheme: 'file' },
+      ],
+      errorCodeActionProvider,
+      {
+        providedCodeActionKinds: TypeLensErrorCodeActionProvider.providedCodeActionKinds,
+      }
     )
   );
 
