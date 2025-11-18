@@ -7,6 +7,15 @@ export interface TypeDiff {
   expected?: string;
   actual?: string;
   message: string;
+  changes?: TypeDiffChange[];
+}
+
+export interface TypeDiffChange {
+  path: string;
+  kind: DiffKind;
+  message: string;
+  expected?: string;
+  actual?: string;
 }
 
 export enum DiffKind {
@@ -14,6 +23,10 @@ export enum DiffKind {
   Extra = 'extra',
   TypeMismatch = 'type-mismatch',
   ValueMismatch = 'value-mismatch',
+  Modified = 'modified',
+  Added = 'added',
+  Removed = 'removed',
+  Identical = 'identical',
 }
 
 /**

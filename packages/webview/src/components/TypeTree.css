@@ -1,0 +1,90 @@
+.type-tree-node {
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  line-height: 1.6;
+  user-select: none;
+}
+
+.type-tree-node-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.1s;
+}
+
+.type-tree-node-content:hover {
+  background-color: var(--vscode-list-hoverBackground);
+}
+
+.expand-icon {
+  display: inline-block;
+  width: 16px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--vscode-foreground);
+  opacity: 0.7;
+  transition: transform 0.2s;
+}
+
+.expand-icon.expanded {
+  transform: rotate(0deg);
+}
+
+.expand-icon-placeholder {
+  display: inline-block;
+  width: 16px;
+}
+
+.type-icon {
+  font-size: 14px;
+}
+
+.type-name {
+  font-weight: 500;
+}
+
+.type-optional {
+  color: var(--vscode-terminal-ansiYellow);
+  font-size: 0.9em;
+}
+
+.type-readonly {
+  color: var(--vscode-terminal-ansiBlue);
+  font-size: 0.85em;
+  font-style: italic;
+  margin-left: 4px;
+}
+
+.type-value {
+  color: var(--vscode-terminal-ansiGreen);
+  font-size: 0.9em;
+  margin-left: 4px;
+}
+
+.jump-to-definition {
+  margin-left: auto;
+  padding: 2px 6px;
+  background: transparent;
+  border: 1px solid var(--vscode-button-border);
+  color: var(--vscode-button-foreground);
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.type-tree-node-content:hover .jump-to-definition {
+  opacity: 1;
+}
+
+.jump-to-definition:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.type-tree-children {
+  margin-left: 0;
+}

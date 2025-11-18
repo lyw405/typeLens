@@ -26,6 +26,9 @@ export type TypeKind =
   | 'template'
   | 'indexed'
   | 'mapped'
+  | 'class'
+  | 'interface'
+  | 'enum'
   | 'unknown';
 
 /**
