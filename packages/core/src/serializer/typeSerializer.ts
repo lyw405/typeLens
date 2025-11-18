@@ -2,10 +2,32 @@ import * as ts from 'typescript';
 import { TypeNode, TypeKind, SerializedType, createId } from '@typelens/shared';
 
 /**
+ * Options for type serialization
+ */
+export interface SerializationOptions {
+  maxDepth?: number;
+  includeSignatures?: boolean;
+  expandAliases?: boolean;
+}
+
+/**
+ * Cache for tracking recursive types
+ */
+interface TypeCache {
+  seen: Set<ts.Type>;
+  depth: Map<ts.Type, number>;
+}
+
+/**
  * TypeScript type serializer
  * Converts TypeScript types to serializable format
  */
 export class TypeSerializer {
+  private cache: TypeCache = {
+    seen: new Set(),
+    depth: new Map(),
+  };
+
   constructor(private checker: ts.TypeChecker) {}
 
   /**
@@ -14,9 +36,17 @@ export class TypeSerializer {
   serialize(
     type: ts.Type,
     sourceFile?: ts.SourceFile,
-    position?: ts.LineAndCharacter
+    position?: ts.LineAndCharacter,
+    options?: SerializationOptions
   ): SerializedType {
-    const typeNode = this.serializeType(type);
+    // Reset cache for new serialization
+    this.cache = {
+      seen: new Set(),
+      depth: new Map(),
+    };
+
+    const maxDepth = options?.maxDepth ?? 10;
+    const typeNode = this.serializeType(type, 0, maxDepth, options);
     const displayName = this.checker.typeToString(type);
 
     return {
@@ -31,17 +61,33 @@ export class TypeSerializer {
   /**
    * Serialize type to TypeNode structure
    */
-  private serializeType(type: ts.Type, depth = 0, maxDepth = 10): TypeNode {
+  private serializeType(
+    type: ts.Type,
+    depth = 0,
+    maxDepth = 10,
+    options?: SerializationOptions
+  ): TypeNode {
     // Prevent infinite recursion
     if (depth > maxDepth) {
       return { kind: 'unknown', name: '...' };
     }
 
+    // Check for circular references
+    if (this.cache.seen.has(type)) {
+      const seenDepth = this.cache.depth.get(type) ?? 0;
+      if (depth - seenDepth > 2) {
+        return { kind: 'unknown', name: '[Circular]' };
+      }
+    }
+
+    this.cache.seen.add(type);
+    this.cache.depth.set(type, depth);
+
     // Handle union types
     if (type.isUnion()) {
       return {
         kind: 'union',
-        children: type.types.map(t => this.serializeType(t, depth + 1, maxDepth)),
+        children: type.types.map(t => this.serializeType(t, depth + 1, maxDepth, options)),
       };
     }
 
@@ -49,7 +95,7 @@ export class TypeSerializer {
     if (type.isIntersection()) {
       return {
         kind: 'intersection',
-        children: type.types.map(t => this.serializeType(t, depth + 1, maxDepth)),
+        children: type.types.map(t => this.serializeType(t, depth + 1, maxDepth, options)),
       };
     }
 
@@ -100,7 +146,9 @@ export class TypeSerializer {
       const elementType = typeArgs?.[0];
       return {
         kind: 'array',
-        children: elementType ? [this.serializeType(elementType, depth + 1, maxDepth)] : [],
+        children: elementType
+          ? [this.serializeType(elementType, depth + 1, maxDepth, options)]
+          : [],
       };
     }
 
@@ -109,8 +157,28 @@ export class TypeSerializer {
       const typeArgs = (type as ts.TypeReference).typeArguments || [];
       return {
         kind: 'tuple',
-        children: typeArgs.map(t => this.serializeType(t, depth + 1, maxDepth)),
+        children: typeArgs.map(t => this.serializeType(t, depth + 1, maxDepth, options)),
       };
+    }
+
+    // Handle function types
+    if (this.isFunctionType(type)) {
+      return this.serializeFunctionType(type, depth, maxDepth, options);
+    }
+
+    // Handle conditional types
+    if (this.isConditionalType(type)) {
+      return this.serializeConditionalType(type, depth, maxDepth, options);
+    }
+
+    // Handle template literal types
+    if (this.isTemplateLiteralType(type)) {
+      return this.serializeTemplateLiteralType(type);
+    }
+
+    // Handle index access types
+    if (this.isIndexedAccessType(type)) {
+      return this.serializeIndexedAccessType(type, depth, maxDepth, options);
     }
 
     // Handle object types
@@ -127,7 +195,7 @@ export class TypeSerializer {
             ts.ModifierFlags.Readonly;
 
         children.push({
-          ...this.serializeType(propType, depth + 1, maxDepth),
+          ...this.serializeType(propType, depth + 1, maxDepth, options),
           name: prop.name,
           optional: isOptional,
           readonly: Boolean(isReadonly),
@@ -147,7 +215,7 @@ export class TypeSerializer {
         return {
           kind: 'generic',
           name: type.aliasSymbol.name,
-          children: typeArgs.map(t => this.serializeType(t, depth + 1, maxDepth)),
+          children: typeArgs.map(t => this.serializeType(t, depth + 1, maxDepth, options)),
         };
       }
     }
@@ -157,6 +225,113 @@ export class TypeSerializer {
     return {
       kind: 'unknown',
       name: typeString,
+    };
+  }
+
+  /**
+   * Check if type is a function type
+   */
+  private isFunctionType(type: ts.Type): boolean {
+    return type.getCallSignatures().length > 0;
+  }
+
+  /**
+   * Serialize function type
+   */
+  private serializeFunctionType(
+    type: ts.Type,
+    depth: number,
+    maxDepth: number,
+    options?: SerializationOptions
+  ): TypeNode {
+    const signatures = type.getCallSignatures();
+    if (signatures.length === 0) {
+      return { kind: 'unknown', name: 'function' };
+    }
+
+    const signature = signatures[0]; // Take first signature
+    const parameters = signature.getParameters();
+    const returnType = signature.getReturnType();
+
+    const paramNodes: TypeNode[] = parameters.map(param => {
+      const paramType = this.checker.getTypeOfSymbolAtLocation(param, param.valueDeclaration!);
+      const isOptional = (param.flags & ts.SymbolFlags.Optional) !== 0;
+      return {
+        ...this.serializeType(paramType, depth + 1, maxDepth, options),
+        name: param.name,
+        optional: isOptional,
+      };
+    });
+
+    const returnNode = this.serializeType(returnType, depth + 1, maxDepth, options);
+
+    return {
+      kind: 'function',
+      name: 'function',
+      children: [...paramNodes, { ...returnNode, name: 'return' }],
+    };
+  }
+
+  /**
+   * Check if type is a conditional type
+   */
+  private isConditionalType(type: ts.Type): boolean {
+    return !!(type.flags & ts.TypeFlags.Conditional);
+  }
+
+  /**
+   * Serialize conditional type (T extends U ? X : Y)
+   */
+  private serializeConditionalType(
+    type: ts.Type,
+    depth: number,
+    maxDepth: number,
+    options?: SerializationOptions
+  ): TypeNode {
+    // TypeScript doesn't expose conditional type structure easily
+    // Fall back to string representation
+    return {
+      kind: 'conditional',
+      name: this.checker.typeToString(type),
+    };
+  }
+
+  /**
+   * Check if type is a template literal type
+   */
+  private isTemplateLiteralType(type: ts.Type): boolean {
+    return !!(type.flags & ts.TypeFlags.TemplateLiteral);
+  }
+
+  /**
+   * Serialize template literal type
+   */
+  private serializeTemplateLiteralType(type: ts.Type): TypeNode {
+    return {
+      kind: 'template',
+      name: this.checker.typeToString(type),
+    };
+  }
+
+  /**
+   * Check if type is an indexed access type
+   */
+  private isIndexedAccessType(type: ts.Type): boolean {
+    return !!(type.flags & ts.TypeFlags.IndexedAccess);
+  }
+
+  /**
+   * Serialize indexed access type (T[K])
+   */
+  private serializeIndexedAccessType(
+    type: ts.Type,
+    depth: number,
+    maxDepth: number,
+    options?: SerializationOptions
+  ): TypeNode {
+    return {
+      kind: 'indexed',
+      name: this.checker.typeToString(type),
     };
   }
 }

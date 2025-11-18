@@ -22,6 +22,10 @@ export type TypeKind =
   | 'function'
   | 'generic'
   | 'tuple'
+  | 'conditional'
+  | 'template'
+  | 'indexed'
+  | 'mapped'
   | 'unknown';
 
 /**

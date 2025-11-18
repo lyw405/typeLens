@@ -80,6 +80,7 @@ export class TypeDiffer {
 
       case 'array':
       case 'tuple':
+      case 'function':
         this.compareArrays(expected, actual, path, diffs);
         break;
 
